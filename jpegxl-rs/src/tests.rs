@@ -2,6 +2,18 @@ mod decode;
 mod encode;
 
 pub const SAMPLE_PNG: &[u8] = include_bytes!("../../samples/sample.png");
+
+/// Compile-time assertion that JxlDecoder is Send
+const _: () = {
+    const fn assert_send<T: Send>() {}
+    assert_send::<crate::decode::JxlDecoder>();
+};
+
+/// Compile-time assertion that JxlEncoder is Send
+const _: () = {
+    const fn assert_send<T: Send>() {}
+    assert_send::<crate::encode::JxlEncoder>();
+};
 const SAMPLE_JPEG: &[u8] = include_bytes!("../../samples/sample.jpg");
 const SAMPLE_EXIF: &[u8] = include_bytes!("../../samples/sample.exif");
 const SAMPLE_XMP: &[u8] = include_bytes!("../../samples/sample.xmp");
