@@ -15,36 +15,60 @@
  * along with jpegxl-rs.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-//! Expanded conformance tests using external JXL corpus.
+//! Expanded conformance tests using codec-corpus JXL files.
 //!
-//! These tests require the `conformance-tests` feature and the `JXL_CONFORMANCE_CORPUS`
-//! environment variable to be set to a directory containing JXL test files.
-//!
-//! The corpus can be the libjxl conformance test suite:
-//! <https://github.com/libjxl/conformance>
+//! These tests use codec-eval to sparse checkout JXL test files from
+//! <https://github.com/imazen/codec-corpus>
 //!
 //! # Usage
 //!
 //! ```bash
-//! export JXL_CONFORMANCE_CORPUS=/path/to/conformance/testcases
 //! cargo test --features conformance-tests,vendored
 //! ```
 
 use std::path::PathBuf;
+use std::sync::OnceLock;
 use std::{env, fs};
+
+use codec_eval::corpus::{SparseCheckout, SparseFilter};
 
 use crate::decoder_builder;
 use crate::ThreadsRunner;
 
-/// Get the conformance corpus path from environment variable
-fn get_corpus_path() -> Option<PathBuf> {
-    env::var("JXL_CONFORMANCE_CORPUS")
-        .ok()
-        .map(PathBuf::from)
-        .filter(|p| p.exists() && p.is_dir())
+const CODEC_CORPUS_URL: &str = "https://github.com/imazen/codec-corpus";
+
+/// Get or initialize the corpus directory with JXL files
+fn get_corpus() -> &'static PathBuf {
+    static CORPUS_PATH: OnceLock<PathBuf> = OnceLock::new();
+
+    CORPUS_PATH.get_or_init(|| {
+        // Use target directory for corpus cache
+        let corpus_dir = env::var("CARGO_TARGET_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("target"))
+            .join("codec-corpus");
+
+        // Initialize or update sparse checkout
+        let checkout = if corpus_dir.exists() {
+            SparseCheckout::init(&corpus_dir).expect("Failed to init existing corpus checkout")
+        } else {
+            SparseCheckout::clone_shallow(CODEC_CORPUS_URL, &corpus_dir, 1)
+                .expect("Failed to clone codec-corpus")
+        };
+
+        // Add JXL directory filter
+        checkout
+            .add_filter(&SparseFilter::Directory("jxl".into()))
+            .expect("Failed to add jxl filter");
+
+        // Checkout the files
+        checkout.checkout().expect("Failed to checkout jxl files");
+
+        corpus_dir.join("jxl")
+    })
 }
 
-/// Collect all JXL files from the corpus directory recursively
+/// Collect all JXL files from a directory recursively
 fn collect_jxl_files(dir: &PathBuf) -> Vec<PathBuf> {
     let mut files = Vec::new();
 
@@ -65,18 +89,14 @@ fn collect_jxl_files(dir: &PathBuf) -> Vec<PathBuf> {
 
 #[test]
 fn decode_all_corpus_files() {
-    let Some(corpus_path) = get_corpus_path() else {
-        eprintln!(
-            "Skipping conformance tests: JXL_CONFORMANCE_CORPUS not set or directory not found"
-        );
-        return;
-    };
+    let corpus_path = get_corpus();
+    let jxl_files = collect_jxl_files(corpus_path);
 
-    let jxl_files = collect_jxl_files(&corpus_path);
-    if jxl_files.is_empty() {
-        eprintln!("Warning: No JXL files found in {}", corpus_path.display());
-        return;
-    }
+    assert!(
+        !jxl_files.is_empty(),
+        "No JXL files found in corpus at {}",
+        corpus_path.display()
+    );
 
     println!("Found {} JXL files in corpus", jxl_files.len());
 
@@ -141,17 +161,10 @@ fn decode_all_corpus_files() {
 
 #[test]
 fn decode_corpus_with_all_pixel_types() {
-    let Some(corpus_path) = get_corpus_path() else {
-        eprintln!(
-            "Skipping conformance tests: JXL_CONFORMANCE_CORPUS not set or directory not found"
-        );
-        return;
-    };
+    let corpus_path = get_corpus();
+    let jxl_files = collect_jxl_files(corpus_path);
 
-    let jxl_files = collect_jxl_files(&corpus_path);
-    if jxl_files.is_empty() {
-        return;
-    }
+    assert!(!jxl_files.is_empty(), "No JXL files found in corpus");
 
     // Test a subset of files with different pixel types
     let test_files: Vec<_> = jxl_files.iter().take(10).collect();
@@ -184,17 +197,10 @@ fn decode_corpus_with_all_pixel_types() {
 
 #[test]
 fn corpus_metadata_validation() {
-    let Some(corpus_path) = get_corpus_path() else {
-        eprintln!(
-            "Skipping conformance tests: JXL_CONFORMANCE_CORPUS not set or directory not found"
-        );
-        return;
-    };
+    let corpus_path = get_corpus();
+    let jxl_files = collect_jxl_files(corpus_path);
 
-    let jxl_files = collect_jxl_files(&corpus_path);
-    if jxl_files.is_empty() {
-        return;
-    }
+    assert!(!jxl_files.is_empty(), "No JXL files found in corpus");
 
     let runner = ThreadsRunner::default();
     let decoder = decoder_builder()
@@ -241,17 +247,10 @@ fn corpus_metadata_validation() {
 
 #[test]
 fn corpus_roundtrip_encoding() {
-    let Some(corpus_path) = get_corpus_path() else {
-        eprintln!(
-            "Skipping conformance tests: JXL_CONFORMANCE_CORPUS not set or directory not found"
-        );
-        return;
-    };
+    let corpus_path = get_corpus();
+    let jxl_files = collect_jxl_files(corpus_path);
 
-    let jxl_files = collect_jxl_files(&corpus_path);
-    if jxl_files.is_empty() {
-        return;
-    }
+    assert!(!jxl_files.is_empty(), "No JXL files found in corpus");
 
     // Test roundtrip on a subset of files
     let test_files: Vec<_> = jxl_files.iter().take(5).collect();

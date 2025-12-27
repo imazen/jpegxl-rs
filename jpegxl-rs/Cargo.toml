@@ -26,9 +26,9 @@ image = ["dep:image"]
 vendored = ["jpegxl-sys/vendored"]
 docs = ["jpegxl-sys/docs"]
 bench = []
-# Enable expanded conformance tests using external JXL corpus
-# Set JXL_CONFORMANCE_CORPUS env var to path containing JXL test files
-conformance-tests = []
+# Enable expanded conformance tests using codec-corpus JXL files
+# Automatically fetches JXL test files via sparse checkout
+conformance-tests = ["dep:codec-eval"]
 
 [dependencies]
 image = { version = "0.25.6", optional = true, default-features = false }
@@ -41,6 +41,11 @@ bon = "3.8.1"
 version = "0.11.2"
 path = "../jpegxl-sys"
 default-features = false
+
+# For conformance tests - sparse checkout of codec-corpus
+[dependencies.codec-eval]
+git = "https://github.com/imazen/codec-eval"
+optional = true
 
 [dev-dependencies]
 image = { version = "0.25.6", default-features = false, features = [

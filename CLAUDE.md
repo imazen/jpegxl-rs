@@ -53,18 +53,21 @@ cargo test --all-features
 # Build libjxl from source
 cargo build --features vendored
 
-# Run expanded conformance tests with external JXL corpus
-export JXL_CONFORMANCE_CORPUS=/path/to/conformance/testcases
+# Run expanded conformance tests (auto-fetches codec-corpus)
 cargo test --features vendored,conformance-tests
 ```
 
 ## Conformance Testing
 
-The `conformance-tests` feature enables expanded testing against an external JXL corpus.
-Set the `JXL_CONFORMANCE_CORPUS` environment variable to a directory containing JXL files.
+The `conformance-tests` feature enables expanded testing against the [codec-corpus](https://github.com/imazen/codec-corpus) JXL test files. When enabled, the tests automatically use [codec-eval](https://github.com/imazen/codec-eval)'s sparse checkout to fetch only the `jxl/` directory from the corpus repository.
 
-Compatible corpora:
-- [libjxl conformance suite](https://github.com/libjxl/conformance) - 39 test files covering various JXL features
+**No environment variables needed** - the corpus is automatically fetched to `target/codec-corpus/` on first run.
+
+```bash
+cargo test --features vendored,conformance-tests
+```
+
+The corpus contains 184 JXL test files covering conformance, edge cases, photographic, and feature tests.
 
 The conformance tests include:
 - `decode_all_corpus_files` - Decode every JXL file in the corpus
