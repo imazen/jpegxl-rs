@@ -88,9 +88,28 @@ The CI pipeline is comprehensive:
 - Clippy with -D warnings
 - Rustfmt checking
 
+#### Test Coverage Expansion
+
+Test count increased from 29 to 53 tests:
+
+Decoder tests:
+- truncated_data, metadata_values, decoder_reuse
+- send_decoder_between_threads, different_channel_counts
+- alignment_options, grayscale_image, decode_without_icc, decode_with_icc
+
+Encoder tests:
+- send_encoder_between_threads, encoder_reuse
+- all_speed_settings, quality_settings, lossless_encoding
+- all_color_encodings, rgba_encoding, encode_different_pixel_types
+- small_images, non_square_images
+
+Utils tests:
+- test_signature_partial_data, test_signature_invalid_data
+
+Image integration tests:
+- grayscale_to_image, image_dimensions, rgba_to_image
+
 #### Areas Still Needing Work
 
-- [ ] Add more edge case tests
-- [ ] Review image feature integration
-- [ ] Consider adding benchmarks
+- [ ] Consider adding benchmarks for new test scenarios
 - [ ] Verify all public APIs have docs
