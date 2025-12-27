@@ -45,4 +45,38 @@ mod tests {
         assert_eq!(check_valid_signature(&[0; 64]), Some(false));
         assert_eq!(check_valid_signature(SAMPLE_JXL), Some(true));
     }
+
+    #[test]
+    fn test_signature_partial_data() {
+        // Very short data should return None (need more bytes)
+        assert!(check_valid_signature(&[0]).is_none());
+        assert!(check_valid_signature(&[0, 0]).is_none());
+
+        // JXL codestream signature starts with 0xFF 0x0A
+        assert_eq!(check_valid_signature(&[0xFF, 0x0A]), Some(true));
+
+        // JXL container signature (ISOBMFF box)
+        let container_sig = [
+            0x00, 0x00, 0x00, 0x0C, 0x4A, 0x58, 0x4C, 0x20, 0x0D, 0x0A, 0x87, 0x0A,
+        ];
+        assert_eq!(check_valid_signature(&container_sig), Some(true));
+    }
+
+    #[test]
+    fn test_signature_invalid_data() {
+        // Clearly invalid signatures
+        assert_eq!(
+            check_valid_signature(&[0x89, 0x50, 0x4E, 0x47]),
+            Some(false)
+        ); // PNG
+        assert_eq!(
+            check_valid_signature(&[0xFF, 0xD8, 0xFF, 0xE0]),
+            Some(false)
+        ); // JPEG
+        assert_eq!(
+            check_valid_signature(&[0x47, 0x49, 0x46, 0x38]),
+            Some(false)
+        ); // GIF
+        assert_eq!(check_valid_signature(b"not a jxl file"), Some(false));
+    }
 }

@@ -226,4 +226,58 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn grayscale_to_image() -> TestResult {
+        let mut decoder = decoder_builder().build()?;
+
+        // Test grayscale 8-bit
+        decoder.pixel_format = Some(PixelFormat {
+            num_channels: 1,
+            ..PixelFormat::default()
+        });
+        let img = decoder.decode_to_image_with::<u8>(SAMPLE_JXL_GRAY)?;
+        assert!(img.is_some(), "Grayscale u8 should produce DynamicImage");
+
+        // Test grayscale 16-bit
+        let img = decoder.decode_to_image_with::<u16>(SAMPLE_JXL_GRAY)?;
+        assert!(img.is_some(), "Grayscale u16 should produce DynamicImage");
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn image_dimensions() -> TestResult {
+        let decoder = decoder_builder().build()?;
+
+        let img = decoder.decode_to_image(SAMPLE_JXL)?.unwrap();
+        let sample_png = image::load_from_memory_with_format(SAMPLE_PNG, image::ImageFormat::Png)?;
+
+        assert_eq!(img.width(), sample_png.width());
+        assert_eq!(img.height(), sample_png.height());
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn rgba_to_image() -> TestResult {
+        let mut decoder = decoder_builder().build()?;
+
+        decoder.pixel_format = Some(PixelFormat {
+            num_channels: 4,
+            ..PixelFormat::default()
+        });
+
+        let img = decoder.decode_to_image_with::<u8>(SAMPLE_JXL)?;
+        assert!(img.is_some());
+        let img = img.unwrap();
+
+        // RGBA8 images should have 4 color channels in the dynamic image
+        assert!(matches!(img, DynamicImage::ImageRgba8(_)));
+
+        Ok(())
+    }
 }
