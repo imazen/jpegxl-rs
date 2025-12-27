@@ -498,6 +498,11 @@ impl Drop for JxlEncoder<'_, '_> {
     }
 }
 
+// Safety: The encoder can be safely sent between threads.
+// The underlying libjxl encoder does not use thread-local state.
+// However, it is NOT Sync because concurrent access from multiple threads is not safe.
+unsafe impl Send for JxlEncoder<'_, '_> {}
+
 /// Return a [`JxlEncoderBuilder`] with default settings
 pub fn encoder_builder<'prl, 'mm>() -> JxlEncoderBuilder<'prl, 'mm> {
     JxlEncoder::builder()
