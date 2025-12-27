@@ -28,6 +28,7 @@ use crate::{
     decoder_builder, DecodeError,
 };
 use crate::{ResizableRunner, ThreadsRunner};
+use std::thread;
 
 #[test]
 fn invalid() -> TestResult {
@@ -175,6 +176,194 @@ fn builder() -> TestResult {
     decoder.decode(super::SAMPLE_JXL)?;
     let (Metadata { width, height, .. }, data) = decoder.decode_with::<f32>(super::SAMPLE_JXL)?;
     assert_eq!(data.len(), (width * height * 4) as usize);
+
+    Ok(())
+}
+
+#[test]
+fn truncated_data() -> TestResult {
+    let decoder = decoder_builder().build()?;
+
+    // Test with various truncation points
+    for len in [0, 1, 10, 50, 100, 500] {
+        if len < super::SAMPLE_JXL.len() {
+            let result = decoder.decode(&super::SAMPLE_JXL[..len]);
+            assert!(
+                result.is_err(),
+                "Expected error for truncated data of length {len}"
+            );
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
+fn metadata_values() -> TestResult {
+    let decoder = decoder_builder().build()?;
+
+    let (metadata, _) = decoder.decode(super::SAMPLE_JXL)?;
+
+    // Verify metadata is reasonable
+    assert!(metadata.width > 0, "Width should be positive");
+    assert!(metadata.height > 0, "Height should be positive");
+    assert!(
+        metadata.num_color_channels == 1 || metadata.num_color_channels == 3,
+        "Color channels should be 1 or 3"
+    );
+    assert!(
+        metadata.intensity_target > 0.0,
+        "Intensity target should be positive"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn decoder_reuse() -> TestResult {
+    let decoder = decoder_builder().build()?;
+
+    // Decode the same image multiple times
+    for _ in 0..3 {
+        let (meta1, pixels1) = decoder.decode(super::SAMPLE_JXL)?;
+        let (meta2, pixels2) = decoder.decode(super::SAMPLE_JXL)?;
+
+        assert_eq!(meta1.width, meta2.width);
+        assert_eq!(meta1.height, meta2.height);
+
+        // Verify pixel data is consistent
+        match (pixels1, pixels2) {
+            (Pixels::Uint16(p1), Pixels::Uint16(p2)) => {
+                assert_eq!(p1.len(), p2.len());
+                assert_eq!(p1, p2, "Pixel data should be identical across decodes");
+            }
+            _ => panic!("Expected same pixel type"),
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
+fn send_decoder_between_threads() -> TestResult {
+    let decoder = decoder_builder().build()?;
+
+    // Move decoder to another thread and decode there
+    let handle = thread::spawn(move || {
+        let (metadata, _) = decoder.decode(super::SAMPLE_JXL).unwrap();
+        metadata.width
+    });
+
+    let width = handle.join().expect("Thread panicked");
+    assert!(width > 0);
+
+    Ok(())
+}
+
+#[test]
+fn different_channel_counts() -> TestResult {
+    // Request 3 channels (RGB)
+    let mut decoder = decoder_builder()
+        .pixel_format(PixelFormat {
+            num_channels: 3,
+            ..Default::default()
+        })
+        .build()?;
+    let (meta, data) = decoder.decode_with::<u8>(super::SAMPLE_JXL)?;
+    assert_eq!(data.len(), (meta.width * meta.height * 3) as usize);
+
+    // Request 4 channels (RGBA)
+    decoder.pixel_format = Some(PixelFormat {
+        num_channels: 4,
+        ..Default::default()
+    });
+    let (meta, data) = decoder.decode_with::<u8>(super::SAMPLE_JXL)?;
+    assert_eq!(data.len(), (meta.width * meta.height * 4) as usize);
+
+    // Request 1 channel (grayscale) - only works with grayscale images
+    decoder.pixel_format = Some(PixelFormat {
+        num_channels: 1,
+        ..Default::default()
+    });
+    let (meta, data) = decoder.decode_with::<u8>(super::SAMPLE_JXL_GRAY)?;
+    assert_eq!(data.len(), (meta.width * meta.height) as usize);
+
+    // Request 2 channels (grayscale + alpha)
+    decoder.pixel_format = Some(PixelFormat {
+        num_channels: 2,
+        ..Default::default()
+    });
+    let (meta, data) = decoder.decode_with::<u8>(super::SAMPLE_JXL_GRAY)?;
+    assert_eq!(data.len(), (meta.width * meta.height * 2) as usize);
+
+    Ok(())
+}
+
+#[test]
+fn alignment_options() -> TestResult {
+    // Test various alignment values
+    for align in [0, 1, 4, 8, 16, 32] {
+        let decoder = decoder_builder()
+            .pixel_format(PixelFormat {
+                num_channels: 3,
+                endianness: Endianness::Native,
+                align,
+            })
+            .build()?;
+
+        let (meta, data) = decoder.decode_with::<u8>(super::SAMPLE_JXL)?;
+        assert!(
+            data.len() >= (meta.width * meta.height * 3) as usize,
+            "Data should have at least width*height*3 bytes for align={align}"
+        );
+    }
+
+    Ok(())
+}
+
+#[test]
+fn grayscale_image() -> TestResult {
+    let decoder = decoder_builder().build()?;
+
+    let (metadata, pixels) = decoder.decode(super::SAMPLE_JXL_GRAY)?;
+
+    // Grayscale should have 1 color channel
+    assert_eq!(metadata.num_color_channels, 1);
+
+    // Verify we got the right pixel type and count
+    let Pixels::Uint16(data) = pixels else {
+        panic!("Expected Uint16 pixels for grayscale");
+    };
+    assert_eq!(data.len(), (metadata.width * metadata.height) as usize);
+
+    Ok(())
+}
+
+#[test]
+fn decode_without_icc() -> TestResult {
+    let decoder = decoder_builder().icc_profile(false).build()?;
+
+    let (metadata, _) = decoder.decode(super::SAMPLE_JXL)?;
+    assert!(
+        metadata.icc_profile.is_none(),
+        "ICC profile should not be retrieved when disabled"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn decode_with_icc() -> TestResult {
+    let decoder = decoder_builder().icc_profile(true).build()?;
+
+    let (metadata, _) = decoder.decode(super::SAMPLE_JXL)?;
+    assert!(
+        metadata.icc_profile.is_some(),
+        "ICC profile should be retrieved when enabled"
+    );
+
+    let icc = metadata.icc_profile.unwrap();
+    assert!(!icc.is_empty(), "ICC profile should not be empty");
 
     Ok(())
 }
