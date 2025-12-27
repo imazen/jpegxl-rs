@@ -52,7 +52,25 @@ cargo test --all-features
 
 # Build libjxl from source
 cargo build --features vendored
+
+# Run expanded conformance tests with external JXL corpus
+export JXL_CONFORMANCE_CORPUS=/path/to/conformance/testcases
+cargo test --features vendored,conformance-tests
 ```
+
+## Conformance Testing
+
+The `conformance-tests` feature enables expanded testing against an external JXL corpus.
+Set the `JXL_CONFORMANCE_CORPUS` environment variable to a directory containing JXL files.
+
+Compatible corpora:
+- [libjxl conformance suite](https://github.com/libjxl/conformance) - 39 test files covering various JXL features
+
+The conformance tests include:
+- `decode_all_corpus_files` - Decode every JXL file in the corpus
+- `decode_corpus_with_all_pixel_types` - Test u8/u16/f32 output formats
+- `corpus_metadata_validation` - Validate metadata constraints
+- `corpus_roundtrip_encoding` - Encode→decode roundtrip verification
 
 ## Findings Log
 

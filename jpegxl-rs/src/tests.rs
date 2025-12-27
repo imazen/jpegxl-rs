@@ -1,6 +1,9 @@
 mod decode;
 mod encode;
 
+#[cfg(feature = "conformance-tests")]
+mod conformance;
+
 pub const SAMPLE_PNG: &[u8] = include_bytes!("../../samples/sample.png");
 
 /// Compile-time assertion that JxlDecoder is Send

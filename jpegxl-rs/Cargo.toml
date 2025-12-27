@@ -26,6 +26,9 @@ image = ["dep:image"]
 vendored = ["jpegxl-sys/vendored"]
 docs = ["jpegxl-sys/docs"]
 bench = []
+# Enable expanded conformance tests using external JXL corpus
+# Set JXL_CONFORMANCE_CORPUS env var to path containing JXL test files
+conformance-tests = []
 
 [dependencies]
 image = { version = "0.25.6", optional = true, default-features = false }
