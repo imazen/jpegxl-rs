@@ -56,7 +56,7 @@ fn simple() -> TestResult {
     ) = decoder.decode(super::SAMPLE_JXL)?;
 
     let Pixels::Uint16(data) = data else {
-        return Err("Failed to decode".into());
+        panic!("Expected Uint16 pixels");
     };
 
     assert_eq!(data.len(), (width * height * 4) as usize);
@@ -72,7 +72,7 @@ fn sample_2bit() -> TestResult {
 
     let (Metadata { width, height, .. }, data) = decoder.decode(super::SAMPLE_JXL_2BIT)?;
     let Pixels::Uint8(data) = data else {
-        return Err("Failed to decode".into());
+        panic!("Expected Uint8 pixels");
     };
     assert_eq!(data.len(), (width * height * 3) as usize);
 
@@ -85,7 +85,7 @@ fn sample_gray() -> TestResult {
 
     let (Metadata { width, height, .. }, data) = decoder.decode(super::SAMPLE_JXL_GRAY)?;
     let Pixels::Uint16(data) = data else {
-        return Err("Failed to decode".into());
+        panic!("Expected Uint16 pixels");
     };
     assert_eq!(data.len(), (width * height) as usize);
 
@@ -125,7 +125,7 @@ fn jpeg() -> TestResult {
 
     let (_, data) = decoder.reconstruct(super::SAMPLE_JXL_JPEG)?;
     let Data::Jpeg(data) = data else {
-        return Err("Failed to reconstruct".into());
+        panic!("Expected JPEG reconstruction");
     };
 
     let jpeg = image::codecs::jpeg::JpegDecoder::new(Cursor::new(data))?;
