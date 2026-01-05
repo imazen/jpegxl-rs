@@ -44,9 +44,10 @@ jobs:
         with:
           sweep-cache: true
       - name: Tests
+        # Exclude conformance-tests feature (requires codec-eval which uses edition2024)
         run: |
-          cargo nextest run --all-features --workspace
-          cargo test --doc --all-features --workspace
+          cargo nextest run --features vendored,bench --workspace
+          cargo test --doc --features vendored,bench --workspace
 
   coverage:
     name: Code Coverage
@@ -68,8 +69,9 @@ jobs:
         with:
           sweep-cache: true
       - name: Generate code coverage
+        # Exclude conformance-tests feature (requires codec-eval which uses edition2024)
         run: cargo +nightly llvm-cov nextest
-          --all-features --workspace
+          --features vendored,bench --workspace
           --branch
           --ignore-filename-regex jpegxl-sys/
           --lcov --output-path lcov.info
@@ -109,10 +111,11 @@ jobs:
             echo "CFG=tsan" >> "$GITHUB_OUTPUT"
           fi
       - name: Test with Sanitizer
+        # Exclude conformance-tests feature (requires codec-eval which uses edition2024)
         run: |
-          cargo +nightly nextest run -Z build-std --target=x86_64-unknown-linux-gnu --all-features
+          cargo +nightly nextest run -Z build-std --target=x86_64-unknown-linux-gnu --features vendored,bench
           # FIXME: Nightly changed the behavior to start from `src` folder
-          # cargo +nightly test --doc -Z build-std --target=x86_64-unknown-linux-gnu --all-features
+          # cargo +nightly test --doc -Z build-std --target=x86_64-unknown-linux-gnu --features vendored,bench
         env:
           RUSTFLAGS: "-Zsanitizer=${{ matrix.sanitizer }} --cfg=${{ steps.setup.outputs.CFG }}"
           RUSTDOCFLAGS: "-Zsanitizer=${{ matrix.sanitizer }} --cfg=${{ steps.setup.outputs.CFG }}"
@@ -127,7 +130,8 @@ jobs:
         with:
           sweep-cache: true
       - uses: taiki-e/install-action@cargo-hack
-      - run: cargo hack check --rust-version --workspace --all-targets --ignore-private --all-features
+      # Exclude conformance-tests feature (requires codec-eval which uses edition2024)
+      - run: cargo hack check --rust-version --workspace --all-targets --ignore-private --features vendored,bench
 
   clippy:
     name: Clippy
@@ -146,7 +150,8 @@ jobs:
         uses: giraffate/clippy-action@v1.0.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          clippy_flags: --all-features --tests -- -D warnings
+          # Exclude conformance-tests feature (requires codec-eval which uses edition2024)
+          clippy_flags: --features vendored,bench --tests -- -D warnings
           reporter: github-check
 
   fmt:
