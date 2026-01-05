@@ -30,6 +30,8 @@ jobs:
             platform: Linux aarch64
           - os: macos-latest
             platform: macOS aarch64
+          - os: windows-11-arm
+            platform: Windows aarch64
     runs-on: ${{ matrix.os }}
     name: Tests (${{ matrix.platform }})
     steps:
