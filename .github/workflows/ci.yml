@@ -80,7 +80,8 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
-          fail_ci_if_error: true
+          # Don't fail CI if Codecov token is not configured (e.g., in forks)
+          fail_ci_if_error: ${{ secrets.CODECOV_TOKEN != '' }}
 
   sanitizers:
     name: Sanitizers
@@ -130,8 +131,12 @@ jobs:
         with:
           sweep-cache: true
       - uses: taiki-e/install-action@cargo-hack
-      # Exclude conformance-tests feature (requires codec-eval which uses edition2024)
-      - run: cargo hack check --rust-version --workspace --all-targets --ignore-private --features vendored,bench
+      # Check each package individually to handle different feature sets
+      # jpegxl-src has no features, jpegxl-sys has vendored, jpegxl-rs has vendored,bench
+      - run: |
+          cargo hack check --rust-version --all-targets -p jpegxl-src
+          cargo hack check --rust-version --all-targets -p jpegxl-sys --features vendored
+          cargo hack check --rust-version --all-targets -p jpegxl-rs --features vendored,bench
 
   clippy:
     name: Clippy
