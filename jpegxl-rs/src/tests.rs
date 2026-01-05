@@ -6,13 +6,13 @@ mod conformance;
 
 pub const SAMPLE_PNG: &[u8] = include_bytes!("../../samples/sample.png");
 
-/// Compile-time assertion that JxlDecoder is Send
+/// Compile-time assertion that [`JxlDecoder`] is Send
 const _: () = {
     const fn assert_send<T: Send>() {}
     assert_send::<crate::decode::JxlDecoder>();
 };
 
-/// Compile-time assertion that JxlEncoder is Send
+/// Compile-time assertion that [`JxlEncoder`] is Send
 const _: () = {
     const fn assert_send<T: Send>() {}
     assert_send::<crate::encode::JxlEncoder>();

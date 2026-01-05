@@ -413,47 +413,52 @@ fn encode_different_pixel_types() -> TestResult {
     decoder.decode(&result)?;
 
     // Test f32
-    let sample_f32 = get_sample().to_rgb32f();
-    let result: EncoderResult<f32> =
-        encoder.encode(sample_f32.as_raw(), sample_f32.width(), sample_f32.height())?;
+    let sample_float = get_sample().to_rgb32f();
+    let result: EncoderResult<f32> = encoder.encode(
+        sample_float.as_raw(),
+        sample_float.width(),
+        sample_float.height(),
+    )?;
     decoder.decode(&result)?;
 
     Ok(())
 }
 
 #[test]
+#[allow(clippy::cast_possible_truncation)]
 fn small_images() -> TestResult {
     let decoder = decoder_builder().build()?;
 
-    // Test encoding very small images
-    for size in [1, 2, 4, 8, 16] {
-        let data: Vec<u8> = vec![128; size * size * 3];
+    // Test encoding very small images (sizes are known to fit in u32)
+    for size in [1_u32, 2, 4, 8, 16] {
+        let data: Vec<u8> = vec![128; (size * size * 3) as usize];
         let mut encoder = encoder_builder().build()?;
-        let result: EncoderResult<u8> = encoder.encode(&data, size as u32, size as u32)?;
+        let result: EncoderResult<u8> = encoder.encode(&data, size, size)?;
 
         let (meta, _) = decoder.decode(&result)?;
-        assert_eq!(meta.width, size as u32);
-        assert_eq!(meta.height, size as u32);
+        assert_eq!(meta.width, size);
+        assert_eq!(meta.height, size);
     }
 
     Ok(())
 }
 
 #[test]
+#[allow(clippy::cast_possible_truncation)]
 fn non_square_images() -> TestResult {
     let decoder = decoder_builder().build()?;
 
-    // Test non-square dimensions
-    let dimensions = [(100, 50), (50, 100), (1, 100), (100, 1), (7, 13)];
+    // Test non-square dimensions (sizes are known to fit in u32)
+    let dimensions: [(u32, u32); 5] = [(100, 50), (50, 100), (1, 100), (100, 1), (7, 13)];
 
     for (width, height) in dimensions {
-        let data: Vec<u8> = vec![128; width * height * 3];
+        let data: Vec<u8> = vec![128; (width * height * 3) as usize];
         let mut encoder = encoder_builder().build()?;
-        let result: EncoderResult<u8> = encoder.encode(&data, width as u32, height as u32)?;
+        let result: EncoderResult<u8> = encoder.encode(&data, width, height)?;
 
         let (meta, _) = decoder.decode(&result)?;
-        assert_eq!(meta.width, width as u32);
-        assert_eq!(meta.height, height as u32);
+        assert_eq!(meta.width, width);
+        assert_eq!(meta.height, height);
     }
 
     Ok(())

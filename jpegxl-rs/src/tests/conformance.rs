@@ -44,8 +44,7 @@ fn get_corpus() -> &'static PathBuf {
     CORPUS_PATH.get_or_init(|| {
         // Use target directory for corpus cache
         let corpus_dir = env::var("CARGO_TARGET_DIR")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("target"))
+            .map_or_else(|_| PathBuf::from("target"), PathBuf::from)
             .join("codec-corpus");
 
         // Initialize or update sparse checkout
@@ -210,9 +209,8 @@ fn corpus_metadata_validation() {
         .expect("Failed to create decoder");
 
     for file_path in &jxl_files {
-        let data = match fs::read(file_path) {
-            Ok(d) => d,
-            Err(_) => continue,
+        let Ok(data) = fs::read(file_path) else {
+            continue;
         };
 
         if let Ok((metadata, _)) = decoder.decode(&data) {
@@ -247,6 +245,9 @@ fn corpus_metadata_validation() {
 
 #[test]
 fn corpus_roundtrip_encoding() {
+    use crate::decode::PixelFormat;
+    use crate::encode::EncoderResult;
+
     let corpus_path = get_corpus();
     let jxl_files = collect_jxl_files(corpus_path);
 
@@ -261,14 +262,11 @@ fn corpus_roundtrip_encoding() {
         .build()
         .expect("Failed to create decoder");
 
-    let mut encoder = crate::encoder_builder()
+    let mut enc = crate::encoder_builder()
         .parallel_runner(&runner)
         .speed(crate::encode::EncoderSpeed::Lightning)
         .build()
         .expect("Failed to create encoder");
-
-    use crate::decode::PixelFormat;
-    use crate::encode::EncoderResult;
 
     for file_path in test_files {
         let data = fs::read(file_path).expect("Failed to read file");
@@ -283,9 +281,8 @@ fn corpus_roundtrip_encoding() {
             .build()
             .expect("Failed to create decoder");
 
-        let (orig_meta, orig_pixels) = match dec.decode_with::<u8>(&data) {
-            Ok(r) => r,
-            Err(_) => continue, // Skip files that can't be decoded as RGB
+        let Ok((orig_meta, orig_pixels)) = dec.decode_with::<u8>(&data) else {
+            continue; // Skip files that can't be decoded as RGB
         };
 
         // Skip animations and special formats for roundtrip test
@@ -294,15 +291,15 @@ fn corpus_roundtrip_encoding() {
         }
 
         // Re-encode
-        let encoded: EncoderResult<u8> =
-            match encoder.encode(&orig_pixels, orig_meta.width, orig_meta.height) {
-                Ok(r) => r,
-                Err(_) => continue,
-            };
+        let Ok(result): Result<EncoderResult<u8>, _> =
+            enc.encode(&orig_pixels, orig_meta.width, orig_meta.height)
+        else {
+            continue;
+        };
 
         // Decode re-encoded
         let (new_meta, _) = decoder
-            .decode(&encoded)
+            .decode(&result)
             .expect("Failed to decode re-encoded image");
 
         assert_eq!(
