@@ -31,6 +31,7 @@ use crate::{
     encoder_builder, Endianness,
 };
 use crate::{encode::EncoderSpeed, ResizableRunner, ThreadsRunner};
+use std::thread;
 
 fn get_sample() -> DynamicImage {
     image::load_from_memory_with_format(super::SAMPLE_PNG, image::ImageFormat::Png)
@@ -258,6 +259,226 @@ fn custom_color_encoding() -> TestResult {
 
     let decoder = decoder_builder().build()?;
     let _res = decoder.decode(&result)?;
+
+    Ok(())
+}
+
+#[test]
+fn send_encoder_between_threads() -> TestResult {
+    let sample = get_sample().to_rgb8();
+    let width = sample.width();
+    let height = sample.height();
+    let data = sample.into_raw();
+
+    let mut encoder = encoder_builder().build()?;
+
+    let handle = thread::spawn(move || {
+        let result: EncoderResult<u8> = encoder.encode(&data, width, height).unwrap();
+        result.data.len()
+    });
+
+    let len = handle.join().expect("Thread panicked");
+    assert!(len > 0);
+
+    Ok(())
+}
+
+#[test]
+fn encoder_reuse() -> TestResult {
+    let sample = get_sample().to_rgb8();
+    let mut encoder = encoder_builder().build()?;
+
+    let result1: EncoderResult<u8> =
+        encoder.encode(sample.as_raw(), sample.width(), sample.height())?;
+    let result2: EncoderResult<u8> =
+        encoder.encode(sample.as_raw(), sample.width(), sample.height())?;
+
+    assert_eq!(
+        result1.data.len(),
+        result2.data.len(),
+        "Encoded sizes should match"
+    );
+    assert_eq!(result1.data, result2.data, "Encoded data should match");
+
+    Ok(())
+}
+
+#[test]
+fn all_speed_settings() -> TestResult {
+    let sample = get_sample().to_rgb8();
+    let decoder = decoder_builder().build()?;
+
+    let speeds = [
+        EncoderSpeed::Lightning,
+        EncoderSpeed::Thunder,
+        EncoderSpeed::Falcon,
+        EncoderSpeed::Cheetah,
+        EncoderSpeed::Hare,
+        EncoderSpeed::Wombat,
+        EncoderSpeed::Squirrel,
+        EncoderSpeed::Kitten,
+        EncoderSpeed::Tortoise,
+    ];
+
+    for speed in speeds {
+        let mut encoder = encoder_builder().speed(speed).build()?;
+        let result: EncoderResult<u8> =
+            encoder.encode(sample.as_raw(), sample.width(), sample.height())?;
+
+        let (meta, _) = decoder.decode(&result)?;
+        assert_eq!(meta.width, sample.width());
+        assert_eq!(meta.height, sample.height());
+    }
+
+    Ok(())
+}
+
+#[test]
+fn quality_settings() -> TestResult {
+    let sample = get_sample().to_rgb8();
+    let decoder = decoder_builder().build()?;
+
+    for quality in [0.0, 0.5, 1.0, 2.0, 3.0, 4.0] {
+        let mut encoder = encoder_builder()
+            .quality(quality)
+            .speed(EncoderSpeed::Lightning)
+            .build()?;
+        let result: EncoderResult<u8> =
+            encoder.encode(sample.as_raw(), sample.width(), sample.height())?;
+
+        let (meta, _) = decoder.decode(&result)?;
+        assert_eq!(meta.width, sample.width());
+        assert_eq!(meta.height, sample.height());
+    }
+
+    Ok(())
+}
+
+#[test]
+fn lossless_encoding() -> TestResult {
+    let sample = get_sample().to_rgb8();
+
+    let mut encoder = encoder_builder()
+        .lossless(true)
+        .uses_original_profile(true)
+        .build()?;
+    let result: EncoderResult<u8> =
+        encoder.encode(sample.as_raw(), sample.width(), sample.height())?;
+
+    let decoder = decoder_builder()
+        .pixel_format(crate::decode::PixelFormat {
+            num_channels: 3,
+            ..Default::default()
+        })
+        .build()?;
+    let (meta, pixels) = decoder.decode_with::<u8>(&result)?;
+
+    assert_eq!(meta.width, sample.width());
+    assert_eq!(meta.height, sample.height());
+    assert_eq!(pixels.len(), sample.as_raw().len());
+    assert_eq!(&pixels, sample.as_raw(), "Lossless should be pixel-perfect");
+
+    Ok(())
+}
+
+#[test]
+fn all_color_encodings() -> TestResult {
+    let sample = get_sample().to_rgb8();
+    let decoder = decoder_builder().build()?;
+
+    let encodings = [ColorEncoding::Srgb, ColorEncoding::LinearSrgb];
+
+    for encoding in encodings {
+        let mut encoder = encoder_builder().color_encoding(encoding).build()?;
+        let result: EncoderResult<u8> =
+            encoder.encode(sample.as_raw(), sample.width(), sample.height())?;
+
+        let (meta, _) = decoder.decode(&result)?;
+        assert_eq!(meta.width, sample.width());
+        assert_eq!(meta.height, sample.height());
+    }
+
+    Ok(())
+}
+
+#[test]
+fn rgba_encoding() -> TestResult {
+    let sample = get_sample().to_rgba8();
+    let decoder = decoder_builder().build()?;
+
+    let mut encoder = encoder_builder().has_alpha(true).build()?;
+    let frame = EncoderFrame::new(sample.as_raw()).num_channels(4);
+    let result: EncoderResult<u8> =
+        encoder.encode_frame(&frame, sample.width(), sample.height())?;
+
+    let (meta, _) = decoder.decode(&result)?;
+    assert_eq!(meta.width, sample.width());
+    assert_eq!(meta.height, sample.height());
+    assert!(meta.has_alpha_channel);
+
+    Ok(())
+}
+
+#[test]
+fn encode_different_pixel_types() -> TestResult {
+    let decoder = decoder_builder().build()?;
+
+    let sample_u8 = get_sample().to_rgb8();
+    let mut encoder = encoder_builder().build()?;
+    let result: EncoderResult<u8> =
+        encoder.encode(sample_u8.as_raw(), sample_u8.width(), sample_u8.height())?;
+    decoder.decode(&result)?;
+
+    let sample_u16 = get_sample().to_rgb16();
+    let result: EncoderResult<u16> =
+        encoder.encode(sample_u16.as_raw(), sample_u16.width(), sample_u16.height())?;
+    decoder.decode(&result)?;
+
+    let sample_float = get_sample().to_rgb32f();
+    let result: EncoderResult<f32> = encoder.encode(
+        sample_float.as_raw(),
+        sample_float.width(),
+        sample_float.height(),
+    )?;
+    decoder.decode(&result)?;
+
+    Ok(())
+}
+
+#[test]
+#[allow(clippy::cast_possible_truncation)]
+fn small_images() -> TestResult {
+    let decoder = decoder_builder().build()?;
+
+    for size in [1_u32, 2, 4, 8, 16] {
+        let data: Vec<u8> = vec![128; (size * size * 3) as usize];
+        let mut encoder = encoder_builder().build()?;
+        let result: EncoderResult<u8> = encoder.encode(&data, size, size)?;
+
+        let (meta, _) = decoder.decode(&result)?;
+        assert_eq!(meta.width, size);
+        assert_eq!(meta.height, size);
+    }
+
+    Ok(())
+}
+
+#[test]
+#[allow(clippy::cast_possible_truncation)]
+fn non_square_images() -> TestResult {
+    let decoder = decoder_builder().build()?;
+
+    let dimensions: [(u32, u32); 5] = [(100, 50), (50, 100), (1, 100), (100, 1), (7, 13)];
+
+    for (width, height) in dimensions {
+        let data: Vec<u8> = vec![128; (width * height * 3) as usize];
+        let mut encoder = encoder_builder().build()?;
+        let result: EncoderResult<u8> = encoder.encode(&data, width, height)?;
+
+        let (meta, _) = decoder.decode(&result)?;
+        assert_eq!(meta.width, width);
+        assert_eq!(meta.height, height);
+    }
 
     Ok(())
 }
