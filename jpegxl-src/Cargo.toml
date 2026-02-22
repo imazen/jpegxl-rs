@@ -1,6 +1,6 @@
 [package]
 description = "Source of libjxl and logic to build it."
-edition = "2021"
+edition = "2024"
 license = "BSD-3-Clause"
 name = "jpegxl-src"
 readme = "README.md"

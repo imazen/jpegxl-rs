@@ -1,7 +1,7 @@
 [package]
 categories = ["external-ffi-bindings", "encoding", "multimedia::images"]
 description = "Rust wrapper for JPEG XL reference implementation"
-edition = "2021"
+edition = "2024"
 keywords = ["jpeg-xl", "jxl"]
 license = "GPL-3.0-or-later"
 links = "jxl"
