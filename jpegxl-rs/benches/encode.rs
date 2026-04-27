@@ -3,8 +3,8 @@
 
 use std::hint::black_box;
 
-use criterion::{criterion_group, criterion_main, Criterion};
-use jpegxl_rs::{encoder_builder, ResizableRunner, ThreadsRunner};
+use criterion::{Criterion, criterion_group, criterion_main};
+use jpegxl_rs::{ResizableRunner, ThreadsRunner, encoder_builder};
 
 const SAMPLE: &[u8] = include_bytes!("../../samples/bench.png");
 

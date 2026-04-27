@@ -23,9 +23,10 @@ use pretty_assertions::assert_eq;
 use testresult::TestResult;
 
 use crate::{
+    DecodeError,
     common::Endianness,
     decode::{Data, Metadata, PixelFormat, Pixels},
-    decoder_builder, DecodeError,
+    decoder_builder,
 };
 use crate::{ResizableRunner, ThreadsRunner};
 use std::thread;

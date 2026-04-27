@@ -55,7 +55,7 @@ extern "C-unwind" {
     /// runner. The runner will execute tasks on the calling thread until
     /// [`JxlResizableParallelRunnerSetThreads`] is called.
     pub fn JxlResizableParallelRunnerCreate(memory_manager: *const JxlMemoryManager)
-        -> *mut c_void;
+    -> *mut c_void;
 
     /// Changes the number of threads for [`JxlResizableParallelRunner`].
     pub fn JxlResizableParallelRunnerSetThreads(runner_opaque: *mut c_void, num_threads: usize);

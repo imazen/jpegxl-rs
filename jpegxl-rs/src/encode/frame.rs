@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use jpegxl_sys::common::types::{JxlEndianness, JxlPixelFormat};
 
-use crate::{common::PixelType, EncodeError};
+use crate::{EncodeError, common::PixelType};
 
 use super::{EncoderResult, JxlEncoder};
 

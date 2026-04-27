@@ -23,9 +23,9 @@ use image::{DynamicImage, ImageBuffer};
 use jpegxl_sys::common::types::{JxlDataType, JxlPixelFormat};
 
 use crate::{
+    DecodeError,
     common::PixelType,
     decode::{JxlDecoder, Metadata},
-    DecodeError,
 };
 
 /// Extension trait for [`JxlDecoder`]
@@ -135,10 +135,10 @@ fn to_image(
 mod tests {
     use super::*;
     use crate::{
+        ThreadsRunner,
         decode::PixelFormat,
         decoder_builder,
         tests::{SAMPLE_JXL, SAMPLE_JXL_GRAY, SAMPLE_PNG},
-        ThreadsRunner,
     };
 
     use half::f16;
@@ -190,9 +190,11 @@ mod tests {
         decoder
             .decode_to_image_with::<u16>(SAMPLE_JXL_GRAY)?
             .unwrap();
-        assert!(decoder
-            .decode_to_image_with::<f32>(SAMPLE_JXL_GRAY)?
-            .is_none());
+        assert!(
+            decoder
+                .decode_to_image_with::<f32>(SAMPLE_JXL_GRAY)?
+                .is_none()
+        );
 
         decoder.pixel_format = Some(PixelFormat {
             num_channels: 2,
@@ -204,9 +206,11 @@ mod tests {
         decoder
             .decode_to_image_with::<u16>(SAMPLE_JXL_GRAY)?
             .unwrap();
-        assert!(decoder
-            .decode_to_image_with::<f32>(SAMPLE_JXL_GRAY)?
-            .is_none());
+        assert!(
+            decoder
+                .decode_to_image_with::<f32>(SAMPLE_JXL_GRAY)?
+                .is_none()
+        );
 
         decoder.pixel_format = Some(PixelFormat {
             num_channels: 3,

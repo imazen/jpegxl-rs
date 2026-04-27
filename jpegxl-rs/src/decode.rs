@@ -29,7 +29,7 @@ use jpegxl_sys::{
 
 use crate::{
     common::{Endianness, PixelType},
-    errors::{check_dec_status, DecodeError},
+    errors::{DecodeError, check_dec_status},
     memory::MemoryManager,
     parallel::ParallelRunner,
     utils::check_valid_signature,
@@ -314,7 +314,7 @@ impl JxlDecoder<'_, '_> {
                 }
                 // Features not yet implemented in this wrapper
                 s::NeedPreviewOutBuffer => {
-                    return Err(DecodeError::NotImplemented("preview image output"))
+                    return Err(DecodeError::NotImplemented("preview image output"));
                 }
                 s::BoxNeedMoreOutput => return Err(DecodeError::NotImplemented("box output")),
                 s::PreviewImage => return Err(DecodeError::NotImplemented("preview image")),

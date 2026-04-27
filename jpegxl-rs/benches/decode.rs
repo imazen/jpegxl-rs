@@ -3,8 +3,8 @@
 
 use std::hint::black_box;
 
-use criterion::{criterion_group, criterion_main, Criterion};
-use jpegxl_rs::{decoder_builder, parallel, ResizableRunner};
+use criterion::{Criterion, criterion_group, criterion_main};
+use jpegxl_rs::{ResizableRunner, decoder_builder, parallel};
 use parallel::threads_runner::ThreadsRunner;
 
 const SAMPLE: &[u8] = include_bytes!("../../samples/bench.jxl");

@@ -26,11 +26,11 @@ use testresult::TestResult;
 
 use crate::decode::Data;
 use crate::{
-    decoder_builder,
+    Endianness, decoder_builder,
     encode::{ColorEncoding, EncoderFrame, EncoderResult, Metadata},
-    encoder_builder, Endianness,
+    encoder_builder,
 };
-use crate::{encode::EncoderSpeed, ResizableRunner, ThreadsRunner};
+use crate::{ResizableRunner, ThreadsRunner, encode::EncoderSpeed};
 use std::thread;
 
 fn get_sample() -> DynamicImage {
